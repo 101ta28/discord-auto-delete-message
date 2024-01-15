@@ -213,9 +213,10 @@ async def on_message(message):
         )
 
         # 再投稿する
-        copied_message = await message.channel.send(
-            content=copied_message_content, files=files
+        copied_message_content = (
+            f"**{message.author.display_name}:**\n{message.content}"
         )
+        copied_message = await message.channel.send(copied_message_content)
 
         # オリジナルメッセージは削除
         await message.delete()
