@@ -22,17 +22,26 @@ DB_CONNECTION_POOL = psycopg2.pool.SimpleConnectionPool(
     password=os.getenv("DB_PASSWORD"),
 )
 
+# 設定を保持する辞書
+channel_settings = {}
+language_settings = {}
+
 # チャンネル設定を読み込む
-def load_channel_settings():
+def load_channel_settings(guild_id):
     conn = DB_CONNECTION_POOL.getconn()
     try:
         cur = conn.cursor()
-        cur.execute("SELECT channel_id, remove_minute FROM channel_settings")
-        channel_settings.clear()
+        cur.execute(
+            "SELECT channel_id, remove_minute FROM channel_settings WHERE guild_id = %s",
+            (guild_id,),
+        )
+        result = {}
         for channel_id, remove_minute in cur.fetchall():
-            channel_settings[channel_id] = remove_minute
+            result[channel_id] = remove_minute
+        return result
     except Exception as e:
         print(f"Error loading channel settings: {e}")
+        return {}
     finally:
         cur.close()
         DB_CONNECTION_POOL.putconn(conn)
@@ -58,13 +67,13 @@ def get_channel_settings(channel_id):
 
 
 # チャンネル設定を保存する
-def set_channel_settings(channel_id, remove_minute):
+def set_channel_settings(guild_id, channel_id, remove_minute):
     conn = DB_CONNECTION_POOL.getconn()
     try:
         cur = conn.cursor()
         cur.execute(
-            "INSERT INTO channel_settings (channel_id, remove_minute) VALUES (%s, %s) ON CONFLICT (channel_id) DO UPDATE SET remove_minute = EXCLUDED.remove_minute",
-            (channel_id, remove_minute),
+            "INSERT INTO channel_settings (guild_id, channel_id, remove_minute) VALUES (%s, %s, %s) ON CONFLICT (channel_id, guild_id) DO UPDATE SET remove_minute = EXCLUDED.remove_minute",
+            (guild_id, channel_id, remove_minute),
         )
         conn.commit()
     except Exception as e:
@@ -75,12 +84,14 @@ def set_channel_settings(channel_id, remove_minute):
 
 
 # チャンネル設定を削除する
-def remove_channel_settings(channel_id):
+def remove_channel_settings(guild_id, channel_id):
     conn = DB_CONNECTION_POOL.getconn()
     try:
         cur = conn.cursor()
-        cur.execute(
-            "DELETE FROM channel_settings WHERE channel_id = %s", (channel_id,)
+        cur.execute
+        (
+            "DELETE FROM channel_settings WHERE guild_id = %s AND channel_id = %s",
+            (guild_id, channel_id),
         )
         conn.commit()
     except Exception as e:
@@ -89,14 +100,6 @@ def remove_channel_settings(channel_id):
         cur.close()
         DB_CONNECTION_POOL.putconn(conn)
 
-
-intents = discord.Intents.default()
-intents.message_content = True
-bot = commands.Bot(command_prefix="/", intents=intents)
-
-# 設定を保持する辞書
-channel_settings = {}
-language_settings = {}
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -123,7 +126,7 @@ async def adm_set(ctx, channel_name: str, remove_minute: str):
     channel = discord.utils.get(ctx.guild.channels, name=channel_name)
     if channel:
         if remove_minute.isdigit() and 1 <= int(remove_minute) <= 1440:
-            set_channel_settings(channel.id, int(remove_minute))
+            set_channel_settings(ctx.guild.id, channel.id, int(remove_minute))
             await ctx.send(
                 get_message(ctx.guild.id, "message_set", lang).format(
                     channel_name, remove_minute
@@ -151,19 +154,15 @@ async def adm_set(ctx, channel_name: str, remove_minute: str):
 @adm.command(name="info")
 async def adm_info(ctx):
     lang = language_settings.get(ctx.guild.id, "ja")
+    channel_settings = load_channel_settings(ctx.guild.id)
     info_lines = []
-    for cid in channel_settings:
-        channel_name = (
-            ctx.guild.get_channel(cid).name
-            if ctx.guild.get_channel(cid)
-            else "Unknown Channel"
+    for cid, remove_minute in channel_settings.items():
+        channel = ctx.guild.get_channel(cid)
+        channel_name = channel.name if channel else "Unknown Channel"
+        info_line = get_message(ctx.guild.id, "channel_info", lang).format(
+            channel_name, remove_minute
         )
-        remove_minute = get_channel_settings(cid)
-        if remove_minute is not None:
-            info_line = get_message(ctx.guild.id, "channel_info", lang).format(
-                channel_name, remove_minute
-            )
-            info_lines.append(info_line)
+        info_lines.append(info_line)
 
     info = "\n".join(info_lines)
     if info:
@@ -199,8 +198,12 @@ async def on_message(message):
     await bot.process_commands(message)
     if message.author.bot or message.content.startswith(bot.command_prefix):
         return
+
+    guild_id = message.guild.id
+    channel_settings = load_channel_settings(guild_id)
+
     if message.channel.id in channel_settings:
-        lang = language_settings.get(message.guild.id, "ja")
+        lang = language_settings.get(guild_id, "ja")
         remove_minute = channel_settings[message.channel.id]
 
         # 添付ファイルをダウンロード
@@ -213,9 +216,6 @@ async def on_message(message):
         )
 
         # 再投稿する
-        copied_message_content = (
-            f"**{message.author.display_name}:**\n{message.content}"
-        )
         copied_message = await message.channel.send(
             content=copied_message_content, files=files
         )
@@ -223,6 +223,7 @@ async def on_message(message):
         # オリジナルメッセージは削除
         await message.delete()
 
+        # メッセージを削除するタスクを作成
         async def delete_copied_message():
             try:
                 await asyncio.sleep(remove_minute * 60)
@@ -252,11 +253,6 @@ async def on_command_error(ctx, error):
             ctx.guild.id, "unexpected_error", lang
         ).format(error)
         await ctx.send(error_message)
-
-
-@bot.event
-async def on_ready():
-    load_channel_settings()
 
 
 bot.run(DISCORD_BOT_TOKEN)
