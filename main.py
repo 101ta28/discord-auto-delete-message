@@ -149,7 +149,7 @@ async def adm_set(ctx, channel_name: str, remove_minute: str):
                 )
             )
         elif remove_minute.lower() == "stop":
-            remove_channel_settings(channel.id)
+            remove_channel_settings(ctx.guild.id, channel.id)
             await ctx.send(
                 get_message(
                     ctx.guild.id, "message_deletion_stopped", lang
