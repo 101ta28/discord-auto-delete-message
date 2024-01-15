@@ -155,7 +155,11 @@ async def on_message(message):
         async def delete_copied_message():
             try:
                 await asyncio.sleep(remove_minute * 60)
-                await copied_message.delete()
+                await copied_message.edit(
+                    content=get_message(
+                        message.guild.id, "message_deletion_stopped", lang
+                    ).format(message.channel.name)
+                )
             except Exception as e:
                 print(f"Error in delete_copied_message: {e}")
 
