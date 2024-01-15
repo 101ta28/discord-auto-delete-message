@@ -216,7 +216,9 @@ async def on_message(message):
         copied_message_content = (
             f"**{message.author.display_name}:**\n{message.content}"
         )
-        copied_message = await message.channel.send(copied_message_content)
+        copied_message = await message.channel.send(
+            content=copied_message_content, files=files
+        )
 
         # オリジナルメッセージは削除
         await message.delete()
@@ -226,7 +228,7 @@ async def on_message(message):
                 await asyncio.sleep(remove_minute * 60)
                 await copied_message.edit(
                     content=get_message(
-                        message.guild.id, "message_deletion_stopped", lang
+                        message.guild.id, "message_replaced", lang
                     ).format(message.channel.name)
                 )
             except Exception as e:
