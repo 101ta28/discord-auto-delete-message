@@ -208,7 +208,7 @@ async def shutdown(ctx):
     await bot.close()
     DB_CONNECTION_POOL.closeall()
 
-
+# TODO: 他のBotのメッセージを削除するかどうか
 @bot.event
 async def on_message(message):
     await bot.process_commands(message)
