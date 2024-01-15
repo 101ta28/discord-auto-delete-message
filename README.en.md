@@ -8,10 +8,6 @@ It automatically deletes messages posted in a specified channel after a set amou
 
 There are two versions: `local.py`, which does not use a database and resets settings upon restart, and `main.py`, which uses PostgreSQL to save settings.
 
-If you want to run it on Railway, you can use the following template:
-
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/QJbiIN?referralCode=wih4oH)
-
 ## Environment Setup
 
 ### 1. Clone the Repository
