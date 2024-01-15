@@ -141,7 +141,7 @@ async def on_message(message):
 
         # ユーザー名とメッセージの内容を組み合わせて再投稿
         copied_message_content = (
-            f"{message.author.display_name}:\n{message.content}"
+            f"**{message.author.display_name}:**\n{message.content}"
         )
 
         # 再投稿する
