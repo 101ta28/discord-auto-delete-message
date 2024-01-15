@@ -4,7 +4,9 @@
 
 DiscordAutoDeleteMessage は、Discord 用 Bot です。
 
-指定したチャンネルに投稿されたメッセージを、指定した時間が経過したら自動的に削除します。
+指定したチャンネルに投稿されたメッセージを、指定した時間(分)が経過したら自動的に削除します。
+
+データベースを用いず、再起動すると設定がリセットされる `local.py` と、PostgresSQLを用いて設定を保存する `main.py` があります。
 
 ## 環境構築
 
@@ -29,10 +31,29 @@ $ pip install -r requirements.txt
 
 ### 3. .env ファイルを作成
 
-.env.sample から.env ファイルを作成します
+.env.sample から.env ファイルを作成します。
 
-### 4. Discord Bot を動かす
+DISCORD_BOT_TOKENは、Discord Developer Portal から取得してください。
+
+データベースを用いない場合、手順5に進んでください。
+
+### 4. データベースを用いる
+
+PostgresSQL を用いています。
+
+```sql
+CREATE TABLE channel_settings (
+    channel_id BIGINT PRIMARY KEY,
+    remove_minute INT
+);
+```
+
+### 5. Discord Bot を動かす
 
 ```bash
+# データベースを用いない場合
+$ python local.py
+
+# データベースを用いる場合
 $ python main.py
 ```
