@@ -6,9 +6,9 @@ messages = {
             "/adm info: Display deletion times for all configured channels\n"
             "\n"
             "Configuration Commands (requires 'Manage Messages' permission):\n"
-            "/adm lang [language_code]: Set the bot's response language\n"
             "/adm set [channel_name] [remove_minute]: Set a timer to automatically delete messages in a specified channel\n"
             "/adm set [channel_name] stop: Stop the automatic message deletion timer for a specified channel\n"
+            "/adm lang [language_code]: Set the bot's response language\n"
             "\n"
             "Admin Commands (requires 'Administrator' permissions):\n"
             "/shutdown: Shut down the bot\n"
@@ -20,7 +20,7 @@ messages = {
         "message_replaced": "{}'s message has been deleted.",
         "language_set": "Language set to English.",
         "missing_permissions": "You do not have the required permissions to use this command.",
-        "channel_info": "{}: Messages will be deleted after {} minutes",
+        "channel_info": "{} channel: Messages will be deleted after {} minutes",
         "unsupported_language": "Unsupported language code or no change in language setting.",
         "invalid_time_setting": "Invalid time setting.",
         "command_not_found": "Command not found.",
@@ -34,9 +34,9 @@ messages = {
             "/adm info: 設定された全チャンネルの削除時間を表示\n"
             "\n"
             "設定コマンド (「メッセージの管理」権限が必要です):\n"
-            "/adm lang [language_code]: ボットの応答言語を設定\n"
             "/adm set [channel_name] [remove_minute]: 指定チャンネルでメッセージを自動削除するためのタイマーを設定\n"
             "/adm set [channel_name] stop: 指定チャンネルの自動削除タイマーを停止\n"
+            "/adm lang [language_code]: ボットの応答言語を設定\n"
             "\n"
             "管理者向けコマンド (「管理者」権限が必要です):\n"
             "/shutdown: ボットをシャットダウンする\n"
@@ -48,7 +48,7 @@ messages = {
         "message_replaced": "{}のメッセージは削除されました。",
         "language_set": "言語を日本語に設定しました。",
         "missing_permissions": "このコマンドを使用するための必要な権限がありません。",
-        "channel_info": "{}: {}分後に削除",
+        "channel_info": "{} チャンネル: {}分後に削除",
         "unsupported_language": "サポートされていない言語コード、または言語設定の変更がありません。",
         "invalid_time_setting": "無効な時間設定です。",
         "command_not_found": "コマンドが見つかりません。",
