@@ -209,7 +209,7 @@ async def on_message(message):
 
         # ユーザー名とメッセージの内容を組み合わせて再投稿
         copied_message_content = (
-            f"{message.author.display_name}:\n{message.content}"
+            f"**{message.author.display_name}:**\n{message.content}"
         )
 
         # 再投稿する
@@ -246,6 +246,11 @@ async def on_command_error(ctx, error):
             ctx.guild.id, "unexpected_error", lang
         ).format(error)
         await ctx.send(error_message)
+
+
+@bot.event
+async def on_ready():
+    load_channel_settings()
 
 
 bot.run(DISCORD_BOT_TOKEN)
