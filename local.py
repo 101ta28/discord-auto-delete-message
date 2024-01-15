@@ -155,10 +155,13 @@ async def on_message(message):
         async def delete_copied_message():
             try:
                 await asyncio.sleep(remove_minute * 60)
+                # メッセージを編集して添付ファイルや画像を削除
                 await copied_message.edit(
                     content=get_message(
                         message.guild.id, "message_replaced", lang
-                    ).format(message.channel.name)
+                    ).format(message.author.display_name),
+                    attachments=[],  # 添付ファイルを削除
+                    embeds=[],  # 埋め込みを削除
                 )
             except Exception as e:
                 print(f"Error in delete_copied_message: {e}")
