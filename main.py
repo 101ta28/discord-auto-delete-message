@@ -1,14 +1,96 @@
-import discord
-from discord.ext import commands
 import asyncio
-from dotenv import load_dotenv
 import os
+
+import discord
+import psycopg2
+import psycopg2.pool
+from discord.ext import commands
+from dotenv import load_dotenv
+
+from messages import get_message
 
 load_dotenv()
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
+# コネクションプールの設定
+DB_CONNECTION_POOL = psycopg2.pool.SimpleConnectionPool(
+    minconn=1,
+    maxconn=10,
+    host=os.getenv("DB_HOST"),
+    port=os.getenv("DB_PORT"),
+    dbname=os.getenv("DB_NAME"),
+    user=os.getenv("DB_USER"),
+    password=os.getenv("DB_PASSWORD"),
+)
 
-intents = discord.Intents.none()
-# MESSAGE CONTENT INTENTを有効化
+# チャンネル設定を読み込む
+def load_channel_settings():
+    conn = DB_CONNECTION_POOL.getconn()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT channel_id, remove_minute FROM channel_settings")
+        channel_settings.clear()
+        for channel_id, remove_minute in cur.fetchall():
+            channel_settings[channel_id] = remove_minute
+    except Exception as e:
+        print(f"Error loading channel settings: {e}")
+    finally:
+        cur.close()
+        DB_CONNECTION_POOL.putconn(conn)
+
+
+# チャンネル設定を取得する
+def get_channel_settings(channel_id):
+    conn = DB_CONNECTION_POOL.getconn()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT remove_minute FROM channel_settings WHERE channel_id = %s",
+            (channel_id,),
+        )
+        result = cur.fetchone()
+        return result[0] if result else None
+    except Exception as e:
+        print(f"Error getting channel settings for channel {channel_id}: {e}")
+        return None
+    finally:
+        cur.close()
+        DB_CONNECTION_POOL.putconn(conn)
+
+
+# チャンネル設定を保存する
+def set_channel_settings(channel_id, remove_minute):
+    conn = DB_CONNECTION_POOL.getconn()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO channel_settings (channel_id, remove_minute) VALUES (%s, %s) ON CONFLICT (channel_id) DO UPDATE SET remove_minute = EXCLUDED.remove_minute",
+            (channel_id, remove_minute),
+        )
+        conn.commit()
+    except Exception as e:
+        print(f"Error setting channel settings: {e}")
+    finally:
+        cur.close()
+        DB_CONNECTION_POOL.putconn(conn)
+
+
+# チャンネル設定を削除する
+def remove_channel_settings(channel_id):
+    conn = DB_CONNECTION_POOL.getconn()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "DELETE FROM channel_settings WHERE channel_id = %s", (channel_id,)
+        )
+        conn.commit()
+    except Exception as e:
+        print(f"Error removing channel settings: {e}")
+    finally:
+        cur.close()
+        DB_CONNECTION_POOL.putconn(conn)
+
+
+intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="/", intents=intents)
 
@@ -16,96 +98,150 @@ bot = commands.Bot(command_prefix="/", intents=intents)
 channel_settings = {}
 language_settings = {}
 
-# メッセージのテンプレート
-messages = {
-    "en": {
-        "help_message": "/adm set [channel_name] [remove_minute]: Replace messages in the specified channel after a certain number of minutes\n/adm help: Display this help message\n/adm info: Display the deletion times for all configured channels",
-        "channel_not_found": "Channel '{}' not found.",
-        "message_set": "Messages in '{}' will be replaced after {} minutes.",
-        "message_deletion_stopped": "Message deletion stopped for '{}'.",
-        "no_channel_settings": "No channels have been configured.",
-        "message_replaced": "{}'s message has been deleted.",
-        "language_set": "Language set to English.",
-        "missing_permissions": "You do not have the required permissions to use this command.",
-        "channel_info": "{}: Messages will be deleted after {} minutes",
-        "unsupported_language": "Unsupported language code or no change in language setting."
-    },
-    "ja": {
-        "help_message": "/adm set [channel_name] [remove_minute]: 指定チャンネルのメッセージを指定分後に置き換える\n/adm help: このヘルプメッセージを表示\n/adm info: 設定された全チャンネルの削除時間を表示",
-        "channel_not_found": "チャンネル'{}'が見つかりません。",
-        "message_set": "{}のメッセージは投稿後{}分で置き換えられます。",
-        "message_deletion_stopped": "{}でのメッセージ削除を停止しました。",
-        "no_channel_settings": "設定されているチャンネルはありません。",
-        "message_replaced": "{}のメッセージは削除されました。",
-        "language_set": "言語を日本語に設定しました。",
-        "missing_permissions": "このコマンドを使用するための必要な権限がありません。",
-        "channel_info": "{}: {}分後に削除",
-        "unsupported_language": "サポートされていない言語コード、または言語設定の変更がありません。"
-    }
-}
+intents = discord.Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix="/", intents=intents)
 
-def get_message(guild_id, key):
-    lang = language_settings.get(guild_id, "ja")
-    return messages[lang][key]
 
 @bot.group(invoke_without_command=True)
 async def adm(ctx):
+    lang = language_settings.get(ctx.guild.id, "ja")
     if ctx.invoked_subcommand is None:
-        await ctx.respond(get_message(ctx.guild.id, "help_message"))
+        await ctx.send(get_message(ctx.guild.id, "help_message", lang))
+
 
 @adm.command(name="help")
 async def adm_help(ctx):
-    await ctx.respond(get_message(ctx.guild.id, "help_message"))
+    lang = language_settings.get(ctx.guild.id, "ja")
+    await ctx.send(get_message(ctx.guild.id, "help_message", lang))
+
 
 @adm.command(name="set")
 @commands.has_permissions(manage_messages=True)
 async def adm_set(ctx, channel_name: str, remove_minute: str):
+    lang = language_settings.get(ctx.guild.id, "ja")
     channel = discord.utils.get(ctx.guild.channels, name=channel_name)
     if channel:
-        if remove_minute.isdigit():
-            channel_settings[channel.id] = int(remove_minute)
-            await ctx.respond(get_message(ctx.guild.id, "message_set").format(channel_name, remove_minute))
+        if remove_minute.isdigit() and 1 <= int(remove_minute) <= 1440:
+            set_channel_settings(channel.id, int(remove_minute))
+            await ctx.send(
+                get_message(ctx.guild.id, "message_set", lang).format(
+                    channel_name, remove_minute
+                )
+            )
         elif remove_minute.lower() == "stop":
-            channel_settings.pop(channel.id, None)
-            await ctx.respond(get_message(ctx.guild.id, "message_deletion_stopped").format(channel_name))
+            remove_channel_settings(channel.id)
+            await ctx.send(
+                get_message(
+                    ctx.guild.id, "message_deletion_stopped", lang
+                ).format(channel_name)
+            )
+        else:
+            await ctx.send(
+                get_message(ctx.guild.id, "invalid_time_setting", lang)
+            )
     else:
-        await ctx.respond(get_message(ctx.guild.id, "channel_not_found").format(channel_name))
+        await ctx.send(
+            get_message(ctx.guild.id, "channel_not_found", lang).format(
+                channel_name
+            )
+        )
+
 
 @adm.command(name="info")
 async def adm_info(ctx):
-    if channel_settings:
-        info = "\n".join([f"{ctx.guild.get_channel(cid).name}: {min}分後に削除" for cid, min in channel_settings.items()])
-        await ctx.respond(get_message(ctx.guild.id, "info").format(info))
+    lang = language_settings.get(ctx.guild.id, "ja")
+    info_lines = []
+    for cid in channel_settings:
+        channel_name = (
+            ctx.guild.get_channel(cid).name
+            if ctx.guild.get_channel(cid)
+            else "Unknown Channel"
+        )
+        remove_minute = get_channel_settings(cid)
+        if remove_minute is not None:
+            info_line = get_message(ctx.guild.id, "channel_info", lang).format(
+                channel_name, remove_minute
+            )
+            info_lines.append(info_line)
+
+    info = "\n".join(info_lines)
+    if info:
+        await ctx.send(info)
     else:
-        await ctx.respond(get_message(ctx.guild.id, "no_channel_settings"))
+        await ctx.send(get_message(ctx.guild.id, "no_channel_settings", lang))
+
 
 @adm.command(name="lang")
+@commands.has_permissions(manage_messages=True)
 async def adm_lang(ctx, lang_code: str):
-    if lang_code in messages and language_settings.get(ctx.guild.id) != lang_code:
+    if lang_code in ["en", "ja"]:
         language_settings[ctx.guild.id] = lang_code
-        await ctx.respond(get_message(ctx.guild.id, "language_set"))
+        await ctx.send(get_message(ctx.guild.id, "language_set", lang_code))
     else:
-        await ctx.respond("Unsupported language code or no change in language setting.")
+        await ctx.send(
+            get_message(ctx.guild.id, "unsupported_language", lang_code)
+        )
+
 
 @bot.event
 async def on_message(message):
-    if message.author.bot:
+    await bot.process_commands(message)
+    if message.author.bot or message.content.startswith(bot.command_prefix):
         return
     if message.channel.id in channel_settings:
+        lang = language_settings.get(message.guild.id, "ja")
         remove_minute = channel_settings[message.channel.id]
 
-        async def replace_message():
-            await asyncio.sleep(remove_minute * 60)
-            await message.edit(content=get_message(message.guild.id, "message_replaced").format(message.author.display_name))
+        # 添付ファイルをダウンロード
+        attachments = message.attachments
+        files = [await attachment.to_file() for attachment in attachments]
 
-        asyncio.create_task(replace_message())
+        # ユーザー名とメッセージの内容を組み合わせて再投稿
+        copied_message_content = (
+            f"{message.author.display_name}:\n{message.content}"
+        )
+
+        # 再投稿する
+        copied_message = await message.channel.send(
+            content=copied_message_content, files=files
+        )
+
+        # オリジナルメッセージは削除
+        await message.delete()
+
+        async def delete_copied_message():
+            try:
+                await asyncio.sleep(remove_minute * 60)
+                await copied_message.delete()
+            except Exception as e:
+                print(f"Error in delete_copied_message: {e}")
+
+        asyncio.create_task(delete_copied_message())
+
 
 @bot.event
 async def on_command_error(ctx, error):
+    lang = language_settings.get(ctx.guild.id, "ja")
     if isinstance(error, commands.errors.MissingPermissions):
-        await ctx.send(get_message(ctx.guild.id, "missing_permissions"))
+        await ctx.send(get_message(ctx.guild.id, "missing_permissions", lang))
+    elif isinstance(error, commands.CommandNotFound):
+        await ctx.send(get_message(ctx.guild.id, "command_not_found", lang))
     else:
-        # 他のエラーの処理
-        pass
+        error_message = get_message(
+            ctx.guild.id, "unexpected_error", lang
+        ).format(error)
+        await ctx.send(error_message)
+
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def shutdown(ctx):
+    """シャットダウンコマンド"""
+    lang = language_settings.get(ctx.guild.id, "ja")
+    await ctx.send(get_message(ctx.guild.id, "shutdown_message", lang))
+    await bot.close()
+    DB_CONNECTION_POOL.closeall()
+
 
 bot.run(DISCORD_BOT_TOKEN)
