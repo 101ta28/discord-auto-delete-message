@@ -166,7 +166,7 @@ async def adm_set(ctx, channel_name: str, remove_minute: str):
             )
         )
 
-
+# TODO: プライベートチャンネルを表示させない
 @adm.command(name="info")
 async def adm_info(ctx):
     lang = language_settings.get(ctx.guild.id, "ja")
