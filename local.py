@@ -157,7 +157,7 @@ async def on_message(message):
                 await asyncio.sleep(remove_minute * 60)
                 await copied_message.edit(
                     content=get_message(
-                        message.guild.id, "message_deletion_stopped", lang
+                        message.guild.id, "message_replaced", lang
                     ).format(message.channel.name)
                 )
             except Exception as e:
