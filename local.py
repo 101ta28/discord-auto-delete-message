@@ -167,7 +167,7 @@ async def on_command_error(ctx, error):
         await ctx.send(error_message)
 
 
-@bot.command()
+@bot.command(name="shutdown")
 @commands.has_permissions(administrator=True)
 async def shutdown(ctx):
     """シャットダウンコマンド"""
