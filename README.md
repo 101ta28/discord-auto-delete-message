@@ -8,6 +8,10 @@ DiscordAutoDeleteMessage は、Discord 用 Bot です。
 
 データベースを用いず、再起動すると設定がリセットされる `local.py` と、PostgresSQLを用いて設定を保存する `main.py` があります。
 
+Railway で動かす場合は、下記のテンプレートを用いることができます。
+
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/QJbiIN?referralCode=wih4oH)
+
 ## 環境構築
 
 ### 1. リポジトリをクローン
