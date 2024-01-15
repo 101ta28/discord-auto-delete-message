@@ -184,6 +184,16 @@ async def adm_lang(ctx, lang_code: str):
         )
 
 
+@adm.command(name="shutdown")
+@commands.has_permissions(administrator=True)
+async def shutdown(ctx):
+    """シャットダウンコマンド"""
+    lang = language_settings.get(ctx.guild.id, "ja")
+    await ctx.send(get_message(ctx.guild.id, "shutdown_message", lang))
+    await bot.close()
+    DB_CONNECTION_POOL.closeall()
+
+
 @bot.event
 async def on_message(message):
     await bot.process_commands(message)
@@ -232,16 +242,6 @@ async def on_command_error(ctx, error):
             ctx.guild.id, "unexpected_error", lang
         ).format(error)
         await ctx.send(error_message)
-
-
-@bot.command(name="shutdown")
-@commands.has_permissions(administrator=True)
-async def shutdown(ctx):
-    """シャットダウンコマンド"""
-    lang = language_settings.get(ctx.guild.id, "ja")
-    await ctx.send(get_message(ctx.guild.id, "shutdown_message", lang))
-    await bot.close()
-    DB_CONNECTION_POOL.closeall()
 
 
 bot.run(DISCORD_BOT_TOKEN)

@@ -11,7 +11,7 @@ messages = {
             "/adm lang [language_code]: Set the bot's response language\n"
             "\n"
             "Admin Commands (requires 'Administrator' permissions):\n"
-            "/shutdown: Shut down the bot\n"
+            "/adm shutdown: Shut down the bot\n"
         ),
         "channel_not_found": "Channel '{}' not found.",
         "message_set": "Messages in '{}' will be replaced after {} minutes.",
@@ -39,7 +39,7 @@ messages = {
             "/adm lang [language_code]: ボットの応答言語を設定\n"
             "\n"
             "管理者向けコマンド (「管理者」権限が必要です):\n"
-            "/shutdown: ボットをシャットダウンする\n"
+            "/adm shutdown: ボットをシャットダウンする\n"
         ),
         "channel_not_found": "チャンネル'{}'が見つかりません。",
         "message_set": "{} チャンネルのメッセージは投稿後{}分で削除されます。",
