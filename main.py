@@ -104,8 +104,7 @@ def remove_channel_settings(guild_id, channel_id):
     conn = DB_CONNECTION_POOL.getconn()
     try:
         cur = conn.cursor()
-        cur.execute
-        (
+        cur.execute(
             "DELETE FROM channel_settings WHERE guild_id = %s AND channel_id = %s",
             (guild_id, channel_id),
         )
@@ -166,6 +165,7 @@ async def adm_set(ctx, channel_name: str, remove_minute: str):
             )
         )
 
+
 # TODO: プライベートチャンネルを表示させない
 @adm.command(name="info")
 async def adm_info(ctx):
@@ -207,6 +207,7 @@ async def shutdown(ctx):
     await ctx.send(get_message(ctx.guild.id, "shutdown_message", lang))
     await bot.close()
     DB_CONNECTION_POOL.closeall()
+
 
 # TODO: 他のBotのメッセージを削除するかどうか
 @bot.event
