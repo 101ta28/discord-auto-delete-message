@@ -26,6 +26,7 @@ DB_CONNECTION_POOL = psycopg2.pool.SimpleConnectionPool(
 channel_settings = {}
 language_settings = {}
 
+
 # チャンネル設定を読み込む
 def load_channel_settings(guild_id):
     conn = DB_CONNECTION_POOL.getconn()
@@ -71,13 +72,28 @@ def set_channel_settings(guild_id, channel_id, remove_minute):
     conn = DB_CONNECTION_POOL.getconn()
     try:
         cur = conn.cursor()
+        # 既存のレコードが存在するか確認
         cur.execute(
-            "INSERT INTO channel_settings (guild_id, channel_id, remove_minute) VALUES (%s, %s, %s) ON CONFLICT (channel_id, guild_id) DO UPDATE SET remove_minute = EXCLUDED.remove_minute",
-            (guild_id, channel_id, remove_minute),
+            "SELECT 1 FROM channel_settings WHERE guild_id = %s AND channel_id = %s",
+            (guild_id, channel_id),
         )
+        exists = cur.fetchone()
+
+        # 既存のレコードがある場合は更新、なければ挿入
+        if exists:
+            cur.execute(
+                "UPDATE channel_settings SET remove_minute = %s WHERE guild_id = %s AND channel_id = %s",
+                (remove_minute, guild_id, channel_id),
+            )
+        else:
+            cur.execute(
+                "INSERT INTO channel_settings (guild_id, channel_id, remove_minute) VALUES (%s, %s, %s)",
+                (guild_id, channel_id, remove_minute),
+            )
         conn.commit()
     except Exception as e:
         print(f"Error setting channel settings: {e}")
+        conn.rollback()
     finally:
         cur.close()
         DB_CONNECTION_POOL.putconn(conn)
